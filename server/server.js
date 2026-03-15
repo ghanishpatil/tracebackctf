@@ -44,12 +44,22 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Root route - API info (avoids "Cannot GET /" when visiting root)
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'TracebackCTF API',
+    status: 'ok',
+    docs: '/api/health',
+    message: 'Use the frontend at tracebackctf.vercel.app',
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
