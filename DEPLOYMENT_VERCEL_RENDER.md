@@ -9,7 +9,7 @@ This guide walks through deploying the CTF platform with the **React frontend on
 ```
 ┌─────────────────────────┐         ┌─────────────────────────────┐
 │  Vercel                 │  API    │  Render                     │
-│  https://ctf-platform   │ ──────► │  https://ctf-platform-api   │
+│  https://ctf-platform   │ ──────► │  https://tracebackctf       │
 │  .vercel.app            │         │  .onrender.com              │
 │  (React SPA)            │         │  (Express API)              │
 └─────────────────────────┘         └─────────────────────────────┘
@@ -63,11 +63,11 @@ Fill in these values exactly:
 
 | Field | Value |
 |-------|-------|
-| **Name** | `ctf-platform-api` |
+| **Name** | `tracebackctf` |
 | **Region** | `Frankfurt (EU Central)` or `Oregon (US West)` – choose closest to your users |
 | **Branch** | `main` |
 | **Runtime** | `Node` |
-| **Build Command** | `npm install --prefix server && npm run build --workspace=server` |
+| **Build Command** | `npm install` |
 | **Start Command** | `node server/server.js` |
 | **Instance Type** | `Free` (or `Starter` if you need more uptime) |
 
@@ -94,8 +94,8 @@ Click **Advanced** → **Add Environment Variable** and add these one by one:
 | `NODE_ENV` | `production` | |
 | `PORT` | `4000` | Render sets this automatically; you can leave it or set explicitly |
 | `FRONTEND_URL` | `https://ctf-platform-xyz.vercel.app` | Replace `ctf-platform-xyz` with your actual Vercel URL after deploying (see Part 2) |
-| `FIREBASE_PROJECT_ID` | `your-firebase-project-id` | From Firebase Console → Project Settings → General |
-| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com` | From your service account JSON |
+| `FIREBASE_PROJECT_ID` | `traceback-ctf-201a3` | From Firebase Console → Project Settings → General |
+| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-fbsvc@traceback-ctf-201a3.iam.gserviceaccount.com` | From your service account JSON |
 | `FIREBASE_PRIVATE_KEY` | `-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----\n` | Paste the full `private_key` from the JSON. Keep the `\n` as literal `\n` or paste with real newlines – Render accepts both |
 
 ---
@@ -148,13 +148,13 @@ Commit and push this change before deploying.
 
 1. Click **Create Web Service**
 2. Wait for the build to complete (about 2–5 minutes)
-3. Once live, your API URL will be: `https://ctf-platform-api.onrender.com` (or your custom name)
+3. Once live, your API URL will be: `https://tracebackctf.onrender.com`
 
 ---
 
 ## Step 1.8: Verify Backend
 
-1. Open: `https://ctf-platform-api.onrender.com/api/health`
+1. Open: `https://tracebackctf.onrender.com/api/health`
 2. You should see: `{"status":"ok","timestamp":"..."}`
 
 If you see a 502 or timeout, check the **Logs** tab for errors (e.g. missing env vars, Firebase config).
@@ -224,18 +224,16 @@ Click **Environment Variables** and add:
 
 | Key | Value | Environment |
 |-----|-------|-------------|
-| `VITE_API_URL` | `https://ctf-platform-api.onrender.com/api` | Production, Preview, Development |
-
-Replace `ctf-platform-api` with your real Render service name if different.
+| `VITE_API_URL` | `https://tracebackctf.onrender.com/api` | Production, Preview, Development |
 
 ### Firebase (client SDK)
 
 | Key | Value |
 |-----|-------|
 | `VITE_FIREBASE_API_KEY` | `AIzaSyB...` (your Firebase Web API Key) |
-| `VITE_FIREBASE_AUTH_DOMAIN` | `your-project.firebaseapp.com` |
-| `VITE_FIREBASE_PROJECT_ID` | `your-project-id` |
-| `VITE_FIREBASE_STORAGE_BUCKET` | `your-project.firebasestorage.app` |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `traceback-ctf-201a3.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID` | `traceback-ctf-201a3` |
+| `VITE_FIREBASE_STORAGE_BUCKET` | `traceback-ctf-201a3.firebasestorage.app` |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | `123456789012` |
 | `VITE_FIREBASE_APP_ID` | `1:123456789012:web:abc123...` |
 
@@ -257,7 +255,7 @@ All values come from Firebase Console → Project Settings → General → Your 
 2. Select your project → **Authentication** → **Settings** → **Authorized domains**
 3. Add:
    - `ctf-platform-xxxxx.vercel.app` (your actual Vercel URL)
-   - `ctf-platform-api.onrender.com` (your Render API URL, if needed for redirects)
+   - `tracebackctf.onrender.com` (your Render API URL, if needed for redirects)
 
 ---
 
@@ -271,7 +269,7 @@ All values come from Firebase Console → Project Settings → General → Your 
 
 # Verification Checklist
 
-- [ ] `https://ctf-platform-api.onrender.com/api/health` returns `{"status":"ok"}`
+- [ ] `https://tracebackctf.onrender.com/api/health` returns `{"status":"ok"}`
 - [ ] `https://ctf-platform-xxxxx.vercel.app` loads the app
 - [ ] You can sign in with Firebase Auth
 - [ ] Challenges and leaderboard load from the API
@@ -314,10 +312,9 @@ All values come from Firebase Console → Project Settings → General → Your 
 
 | Placeholder | Replace with |
 |-------------|--------------|
-| `ctf-platform-api` | Your Render service name |
+| `tracebackctf` | Your Render service name (e.g. tracebackctf.onrender.com) |
 | `ctf-platform-xxxxx.vercel.app` | Your actual Vercel deployment URL |
-| `your-project` | Your Firebase project ID |
-| `your-project-id` | Same as above |
+| `traceback-ctf-201a3` | Firebase project ID |
 | `AIzaSyB...` | Your Firebase Web API key |
 | `123456789012` | Your Firebase sender ID |
 | `1:123456789012:web:abc123...` | Your Firebase app ID |
