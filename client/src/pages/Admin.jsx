@@ -886,11 +886,12 @@ function EventTab({ showToast }) {
         setTitle(event.title || '');
         setStatus(event.status || 'idle');
         setRemaining(event.remaining ?? 0);
-        setDuration(event.duration || 0);
-        if (event.status === 'idle' && event.duration) {
-          setHours(Math.floor(event.duration / 3600));
-          setMinutes(Math.floor((event.duration % 3600) / 60));
-          setSeconds(event.duration % 60);
+        const dur = event.duration || 0;
+        setDuration(dur);
+        if (dur > 0) {
+          setHours(Math.floor(dur / 3600));
+          setMinutes(Math.floor((dur % 3600) / 60));
+          setSeconds(dur % 60);
         }
       }
     });
@@ -922,7 +923,18 @@ function EventTab({ showToast }) {
     setBusy(true);
     try {
       const dur = (hours * 3600) + (minutes * 60) + seconds;
-      await adminApi.timerAction({ action, duration: dur || duration, title });
+      const totalDuration = dur || duration;
+      let payload = { title, duration: totalDuration };
+      if (action === 'start') {
+        payload = { status: 'running', startedAt: new Date().toISOString(), duration: totalDuration, title, elapsed: 0 };
+      } else if (action === 'pause') {
+        payload = { status: 'paused', elapsed: Math.max(0, (duration || 0) - remaining), duration: duration || 0, title };
+      } else if (action === 'reset') {
+        payload = { status: 'idle', elapsed: 0, duration: totalDuration, title };
+      } else if (action === 'configure') {
+        payload = { title, duration: totalDuration };
+      }
+      await adminApi.timerAction(payload);
       await loadEvent();
       const labels = { start: 'Timer started', pause: 'Timer paused', reset: 'Timer reset', configure: 'Settings saved' };
       showToast('success', labels[action] || 'Done');

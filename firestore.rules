@@ -2,10 +2,75 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // All reads/writes go through the server via Firebase Admin SDK,
-    // which bypasses these rules. Lock down direct client access.
-    match /{document=**} {
-      allow read, write: if false;
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ---- users ----
+    // Own profile: read/write. Admin: read/write any user (list users, update role/banned).
+    match /users/{userId} {
+      allow read, write: if isAuth() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // ---- teams ----
+    // All: read (leaderboard, get my team). Any auth: create (create team), update (join/leave), delete (leave when empty; admin delete team).
+    match /teams/{teamId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAuth();
+    }
+
+    // ---- challenges ----
+    // Read: active challenges for everyone; all challenges for admin. Write: admin only.
+    match /challenges/{challengeId} {
+      allow read: if isAuth() && (resource.data.isActive == true || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- challenge_flags ----
+    // Admin only (store flags separately so clients never read them). Cloud Function uses Admin SDK.
+    match /challenge_flags/{challengeId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- submissions ----
+    // Read: any auth (leaderboard/timeline + admin list). Create only via Cloud Function (submitFlag).
+    match /submissions/{subId} {
+      allow read: if isAuth();
+      allow create, update, delete: if false;
+    }
+
+    // ---- events ----
+    // Read: any auth (timer). Write: admin only.
+    match /events/{docId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ---- announcements ----
+    // Read: any auth. Write: admin only.
+    match /announcements/{announcementId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- settings ----
+    // Read: any auth. Write: admin only.
+    match /settings/{docId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ---- hint_usage ----
+    // Any auth can read/write (app enforces team membership for requestHint).
+    match /hint_usage/{usageId} {
+      allow read, write: if isAuth();
     }
   }
 }

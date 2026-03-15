@@ -36,8 +36,25 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function login(email, password) {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    return cred.user;
+    const e = (email || '').trim();
+    const p = typeof password === 'string' ? password : '';
+    if (!e || !p) throw new Error('Email and password are required');
+    try {
+      const cred = await signInWithEmailAndPassword(auth, e, p);
+      return cred.user;
+    } catch (err) {
+      const code = err.code || '';
+      if (code === 'auth/operation-not-allowed') {
+        throw new Error('Email/password sign-in is not enabled. Enable it in Firebase Console → Authentication → Sign-in method.');
+      }
+      if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+        throw new Error('Invalid email or password.');
+      }
+      if (code === 'auth/invalid-email') throw new Error('Invalid email address.');
+      if (code === 'auth/user-disabled') throw new Error('This account has been disabled.');
+      if (code === 'auth/too-many-requests') throw new Error('Too many attempts. Try again later.');
+      throw new Error(err.message || 'Login failed.');
+    }
   }
 
   async function register(email, password, username) {

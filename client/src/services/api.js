@@ -1,156 +1,104 @@
-import { auth } from '../config/firebase';
-import { signOut } from 'firebase/auth';
-
-// Production: use Render API. Local: use proxy /api. Override with VITE_API_URL.
-const API_URL = import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD && typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
-    ? 'https://tracebackctf.onrender.com/api'
-    : '/api');
-
-async function getToken(forceRefresh = false) {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Not authenticated');
-  return user.getIdToken(forceRefresh);
-}
-
-async function request(endpoint, options = {}, retried = false, { noSignOutOn401 = false } = {}) {
-  let token;
-  try {
-    token = await getToken(retried);
-  } catch {
-    if (!noSignOutOn401) await signOut(auth).catch(() => {});
-    throw new Error('Not authenticated');
-  }
-
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
-
-  if (res.status === 401 && !retried) {
-    return request(endpoint, options, true, { noSignOutOn401 });
-  }
-  if (res.status === 401) {
-    if (!noSignOutOn401) await signOut(auth).catch(() => {});
-    throw new Error('Session expired. Please sign in again.');
-  }
-
-  const text = await res.text();
-  let data;
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    if (res.status === 404) throw new Error('API not found. Check that the backend is running.');
-    throw new Error('Could not reach the server. Try again in a moment.');
-  }
-  if (!res.ok) throw new Error(data.error || 'Request failed');
-  return data;
-}
-
-async function uploadFiles(files) {
-  let token;
-  try {
-    token = await getToken();
-  } catch {
-    await signOut(auth).catch(() => {});
-    throw new Error('Not authenticated');
-  }
-
-  const formData = new FormData();
-  for (const file of files) {
-    formData.append('files', file);
-  }
-  const res = await fetch(`${API_URL}/upload`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
-  if (res.status === 401) {
-    await signOut(auth).catch(() => {});
-    throw new Error('Session expired. Please sign in again.');
-  }
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Upload failed');
-  return data;
-}
+/**
+ * API layer: uses Firestore + Auth + Storage + Callable (no backend server).
+ * All methods delegate to client/src/services/db.js.
+ */
+import * as db from './db';
 
 export const api = {
-  getChallenges: () => request('/challenges'),
-  getChallenge: (id) => request(`/challenges/${id}`),
-  submitFlag: (challengeId, flag) =>
-    request('/submit-flag', {
-      method: 'POST',
-      body: JSON.stringify({ challengeId, flag }),
+  getChallenges: () => db.getChallenges().then((challenges) => ({ challenges })),
+
+  getChallenge: (id) =>
+    db.getChallenge(id).then((challenge) => {
+      if (!challenge) throw new Error('Challenge not found');
+      return { challenge };
     }),
-  requestHint: (challengeId) =>
-    request(`/challenges/${challengeId}/hint`, { method: 'POST' }),
-  getLeaderboard: () => request('/leaderboard'),
-  getTimeline: () => request('/leaderboard/timeline'),
-  getProfile: (opts) => request('/auth/profile', {}, false, opts),
+
+  submitFlag: (challengeId, flag) => db.submitFlag(challengeId, flag),
+
+  requestHint: (challengeId) => db.requestHint(challengeId),
+
+  getLeaderboard: () => db.getLeaderboard(),
+
+  getTimeline: () => db.getTimeline(),
+
+  getProfile: (opts = {}) =>
+    db.getProfile().then((profile) => {
+      if (!profile) throw new Error('Profile not found');
+      return { profile };
+    }),
+
   register: (uid, username, email) =>
-    request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ uid, username, email }),
-    }),
-  getAnnouncements: (opts) => request('/announcements', {}, false, opts),
-  getTimer: (opts) => request('/timer', {}, false, opts),
-  getMyTeam: (opts) => request('/teams/mine', {}, false, opts),
-  createTeam: (teamName) =>
-    request('/teams/create', { method: 'POST', body: JSON.stringify({ teamName }) }),
-  joinTeam: (inviteCode) =>
-    request('/teams/join', { method: 'POST', body: JSON.stringify({ inviteCode }) }),
-  leaveTeam: () =>
-    request('/teams/leave', { method: 'POST' }),
+    db.registerUser(uid, username, email).then(() => ({ message: 'User registered successfully' })),
+
+  getAnnouncements: (opts = {}) =>
+    db.getAnnouncements().then((announcements) => ({ announcements })),
+
+  getTimer: (opts = {}) => db.getTimer(),
+
+  getMyTeam: (opts = {}) => db.getMyTeam(),
+
+  createTeam: (teamName) => db.createTeam(teamName),
+
+  joinTeam: (inviteCode) => db.joinTeam(inviteCode),
+
+  leaveTeam: () => db.leaveTeam(),
 };
 
 export const adminApi = {
-  uploadFiles,
-  getStats: () => request('/admin/stats'),
+  uploadFiles: (files) => db.uploadFiles(files),
 
-  listChallenges: () => request('/admin/challenges'),
-  getChallenge: (id) => request(`/admin/challenges/${id}`),
+  getStats: () => db.adminGetStats(),
+
+  listChallenges: () => db.adminListChallenges().then((challenges) => ({ challenges })),
+
+  getChallenge: (id) =>
+    db.adminGetChallenge(id).then((challenge) => {
+      if (!challenge) throw new Error('Challenge not found');
+      return { challenge };
+    }),
+
   createChallenge: (data) =>
-    request('/admin/challenges', { method: 'POST', body: JSON.stringify(data) }),
-  updateChallenge: (id, data) =>
-    request(`/admin/challenges/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  toggleChallenge: (id, isActive) =>
-    request(`/admin/challenges/${id}/toggle`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
-  deleteChallenge: (id) =>
-    request(`/admin/challenges/${id}`, { method: 'DELETE' }),
+    db.adminCreateChallenge(data).then((id) => ({ id })),
+
+  updateChallenge: (id, data) => db.adminUpdateChallenge(id, data),
+
+  toggleChallenge: (id, isActive) => db.adminToggleChallenge(id, isActive),
+
+  deleteChallenge: (id) => db.adminDeleteChallenge(id),
+
   duplicateChallenge: (id) =>
-    request(`/admin/challenges/${id}/duplicate`, { method: 'POST' }),
+    db.adminDuplicateChallenge(id).then((newId) => ({ id: newId })),
 
-  listUsers: () => request('/admin/users'),
-  updateUser: (uid, data) =>
-    request(`/admin/users/${uid}`, { method: 'PUT', body: JSON.stringify(data) }),
+  listUsers: () => db.adminListUsers().then((users) => ({ users })),
 
-  listTeams: () => request('/admin/teams'),
-  updateTeam: (id, data) =>
-    request(`/admin/teams/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteTeam: (id) =>
-    request(`/admin/teams/${id}`, { method: 'DELETE' }),
-  kickMember: (teamId, uid) =>
-    request(`/admin/teams/${teamId}/kick`, { method: 'POST', body: JSON.stringify({ uid }) }),
+  updateUser: (uid, data) => db.adminUpdateUser(uid, data),
 
-  listSubmissions: (limit = 50) => request(`/admin/submissions?limit=${limit}`),
+  listTeams: () => db.adminListTeams().then((teams) => ({ teams })),
 
-  getEvent: () => request('/admin/event'),
-  timerAction: (data) =>
-    request('/admin/event', { method: 'PUT', body: JSON.stringify(data) }),
+  updateTeam: (id, data) => db.adminUpdateTeam(id, data),
 
-  listAnnouncements: () => request('/admin/announcements'),
+  deleteTeam: (id) => db.adminDeleteTeam(id),
+
+  kickMember: (teamId, uid) => db.adminKickMember(teamId, uid),
+
+  listSubmissions: (limitCount = 50) =>
+    db.adminListSubmissions(limitCount).then((submissions) => ({ submissions })),
+
+  getEvent: () => db.adminGetEvent().then((event) => ({ event })),
+
+  timerAction: (data) => db.adminUpdateEvent(data),
+
+  listAnnouncements: () =>
+    db.adminListAnnouncements().then((announcements) => ({ announcements })),
+
   createAnnouncement: (data) =>
-    request('/admin/announcements', { method: 'POST', body: JSON.stringify(data) }),
-  updateAnnouncement: (id, data) =>
-    request(`/admin/announcements/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteAnnouncement: (id) =>
-    request(`/admin/announcements/${id}`, { method: 'DELETE' }),
+    db.adminCreateAnnouncement(data).then((id) => ({ id })),
 
-  getSettings: () => request('/admin/settings'),
-  updateSettings: (data) =>
-    request('/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  updateAnnouncement: (id, data) => db.adminUpdateAnnouncement(id, data),
+
+  deleteAnnouncement: (id) => db.adminDeleteAnnouncement(id),
+
+  getSettings: () => db.adminGetSettings().then((settings) => ({ settings })),
+
+  updateSettings: (data) => db.adminUpdateSettings(data),
 };
