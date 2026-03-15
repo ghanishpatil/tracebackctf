@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -7,16 +7,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (searchParams.get('reason') === 'session_expired') {
-      setError('Your session expired. Please sign in again.');
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -63,7 +55,7 @@ export default function Login() {
               id="password"
               type="password"
               className="input"
-              placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+              placeholder={'\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

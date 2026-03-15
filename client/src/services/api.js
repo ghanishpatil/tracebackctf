@@ -9,15 +9,15 @@ async function getToken(forceRefresh = false) {
   return user.getIdToken(forceRefresh);
 }
 
-async function handleSessionExpired() {
-  await signOut(auth);
-  const url = new URL('/login', window.location.origin);
-  url.searchParams.set('reason', 'session_expired');
-  window.location.href = url.toString();
-}
-
 async function request(endpoint, options = {}, retried = false) {
-  const token = await getToken(retried);
+  let token;
+  try {
+    token = await getToken(retried);
+  } catch {
+    await signOut(auth).catch(() => {});
+    throw new Error('Not authenticated');
+  }
+
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers: {
@@ -28,27 +28,33 @@ async function request(endpoint, options = {}, retried = false) {
   });
 
   if (res.status === 401 && !retried) {
-    try {
-      const newToken = await getToken(true);
-      return request(endpoint, options, true);
-    } catch {
-      await handleSessionExpired();
-      throw new Error('Session expired');
-    }
+    return request(endpoint, options, true);
   }
   if (res.status === 401) {
-    await handleSessionExpired();
-    throw new Error('Session expired');
+    await signOut(auth).catch(() => {});
+    throw new Error('Session expired. Please sign in again.');
   }
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error('Unexpected server response');
+  }
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
 
 async function uploadFiles(files) {
-  const token = await getToken();
+  let token;
+  try {
+    token = await getToken();
+  } catch {
+    await signOut(auth).catch(() => {});
+    throw new Error('Not authenticated');
+  }
+
   const formData = new FormData();
   for (const file of files) {
     formData.append('files', file);
@@ -59,8 +65,8 @@ async function uploadFiles(files) {
     body: formData,
   });
   if (res.status === 401) {
-    await handleSessionExpired();
-    throw new Error('Session expired');
+    await signOut(auth).catch(() => {});
+    throw new Error('Session expired. Please sign in again.');
   }
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Upload failed');

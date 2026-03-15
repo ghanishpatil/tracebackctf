@@ -91,13 +91,12 @@ app.get('/api/timer', authenticate, async (_req, res, next) => {
   }
 });
 
-// Error handling middleware
-app.use(errorHandler);
-
-// 404 handler for API routes
+// 404 handler for unmatched API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
+
+app.use(errorHandler);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);

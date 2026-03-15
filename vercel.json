@@ -1,5 +1,4 @@
 {
-  "version": 2,
   "builds": [
     {
       "src": "client/package.json",
@@ -9,13 +8,7 @@
       }
     }
   ],
-  "routes": [
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
