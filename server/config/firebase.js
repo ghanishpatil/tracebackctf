@@ -2,20 +2,26 @@ const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
 
-const keyPath = path.resolve(__dirname, 'serviceAccountKey.json');
+let serviceAccount;
 
-if (!fs.existsSync(keyPath)) {
-  console.error(
-    '\n❌  Missing service account key file!\n' +
-    `   Expected at: ${keyPath}\n\n` +
-    '   Download it from Firebase Console:\n' +
-    '   Project Settings → Service Accounts → Generate New Private Key\n' +
-    '   Save the file as server/config/serviceAccountKey.json\n'
-  );
-  process.exit(1);
+if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+  serviceAccount = {
+    project_id: process.env.FIREBASE_PROJECT_ID,
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  };
+} else {
+  const keyPath = path.resolve(__dirname, 'serviceAccountKey.json');
+  if (!fs.existsSync(keyPath)) {
+    console.error(
+      '\n❌  Missing Firebase credentials!\n' +
+      '   Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY (for Render)\n' +
+      `   OR place serviceAccountKey.json at: ${keyPath}\n`
+    );
+    process.exit(1);
+  }
+  serviceAccount = require(keyPath);
 }
-
-const serviceAccount = require(keyPath);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
