@@ -1,6 +1,6 @@
 const challengeService = require('../services/challengeService');
 const hintService = require('../services/hintService');
-const { HINT_PENALTY } = require('shared');
+const { HINT_PENALTY } = require('../shared/constants');
 
 async function getAll(req, res, next) {
   try {

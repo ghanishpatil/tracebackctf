@@ -1,5 +1,5 @@
 const { auth, db } = require('../config/firebase');
-const { COLLECTIONS, ROLES } = require('shared');
+const { COLLECTIONS, ROLES } = require('../shared/constants');
 
 async function authenticate(req, res, next) {
   const header = req.headers.authorization;

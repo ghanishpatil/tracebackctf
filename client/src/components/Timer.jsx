@@ -14,11 +14,12 @@ export default function Timer() {
     setTitle(data.title || '');
   }
 
+  const timerOpts = { noSignOutOn401: true };
   useEffect(() => {
-    api.getTimer().then(applyState).catch(() => {});
+    api.getTimer(timerOpts).then(applyState).catch(() => {});
 
     pollRef.current = setInterval(() => {
-      api.getTimer().then(applyState).catch(() => {});
+      api.getTimer(timerOpts).then(applyState).catch(() => {});
     }, 15000);
 
     return () => { clearInterval(pollRef.current); };

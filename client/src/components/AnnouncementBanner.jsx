@@ -8,7 +8,7 @@ export default function AnnouncementBanner() {
 
   useEffect(() => {
     if (!user) return;
-    api.getAnnouncements()
+    api.getAnnouncements({ noSignOutOn401: true })
       .then((d) => setAnnouncements(d.announcements || []))
       .catch(() => {});
   }, [user]);

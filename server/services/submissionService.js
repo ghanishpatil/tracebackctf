@@ -1,5 +1,5 @@
 const { db } = require('../config/firebase');
-const { COLLECTIONS } = require('shared');
+const { COLLECTIONS } = require('../shared/constants');
 
 const submissionsRef = db.collection(COLLECTIONS.SUBMISSIONS);
 

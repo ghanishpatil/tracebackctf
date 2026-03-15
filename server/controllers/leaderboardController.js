@@ -2,7 +2,7 @@ const teamService = require('../services/teamService');
 const submissionService = require('../services/submissionService');
 const challengeService = require('../services/challengeService');
 const hintService = require('../services/hintService');
-const { HINT_PENALTY } = require('shared');
+const { HINT_PENALTY } = require('../shared/constants');
 
 async function getLeaderboard(req, res, next) {
   try {

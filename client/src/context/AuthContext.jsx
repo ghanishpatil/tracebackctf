@@ -20,7 +20,8 @@ export function AuthProvider({ children }) {
       setUser(firebaseUser);
       if (firebaseUser) {
         try {
-          const { profile: p } = await api.getProfile();
+          await firebaseUser.getIdToken(true);
+          const { profile: p } = await api.getProfile({ noSignOutOn401: true });
           setProfile(p);
         } catch {
           setProfile(null);
@@ -54,7 +55,7 @@ export function AuthProvider({ children }) {
 
   async function refreshProfile() {
     try {
-      const { profile: p } = await api.getProfile();
+      const { profile: p } = await api.getProfile({ noSignOutOn401: true });
       setProfile(p);
     } catch { /* ignore */ }
   }

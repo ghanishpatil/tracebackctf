@@ -56,7 +56,7 @@ function TeamSection({ profile, refreshProfile }) {
   async function loadTeam() {
     setLoading(true);
     try {
-      const { team: t } = await api.getMyTeam();
+      const { team: t } = await api.getMyTeam({ noSignOutOn401: true });
       setTeam(t);
     } catch { setTeam(null); }
     finally { setLoading(false); }

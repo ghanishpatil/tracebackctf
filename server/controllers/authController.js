@@ -1,5 +1,5 @@
 const { db } = require('../config/firebase');
-const { COLLECTIONS, ROLES } = require('shared');
+const { COLLECTIONS, ROLES } = require('../shared/constants');
 
 async function register(req, res, next) {
   try {

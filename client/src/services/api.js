@@ -13,12 +13,12 @@ async function getToken(forceRefresh = false) {
   return user.getIdToken(forceRefresh);
 }
 
-async function request(endpoint, options = {}, retried = false) {
+async function request(endpoint, options = {}, retried = false, { noSignOutOn401 = false } = {}) {
   let token;
   try {
     token = await getToken(retried);
   } catch {
-    await signOut(auth).catch(() => {});
+    if (!noSignOutOn401) await signOut(auth).catch(() => {});
     throw new Error('Not authenticated');
   }
 
@@ -32,10 +32,10 @@ async function request(endpoint, options = {}, retried = false) {
   });
 
   if (res.status === 401 && !retried) {
-    return request(endpoint, options, true);
+    return request(endpoint, options, true, { noSignOutOn401 });
   }
   if (res.status === 401) {
-    await signOut(auth).catch(() => {});
+    if (!noSignOutOn401) await signOut(auth).catch(() => {});
     throw new Error('Session expired. Please sign in again.');
   }
 
@@ -90,15 +90,15 @@ export const api = {
     request(`/challenges/${challengeId}/hint`, { method: 'POST' }),
   getLeaderboard: () => request('/leaderboard'),
   getTimeline: () => request('/leaderboard/timeline'),
-  getProfile: () => request('/auth/profile'),
+  getProfile: (opts) => request('/auth/profile', {}, false, opts),
   register: (uid, username, email) =>
     request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ uid, username, email }),
     }),
-  getAnnouncements: () => request('/announcements'),
-  getTimer: () => request('/timer'),
-  getMyTeam: () => request('/teams/mine'),
+  getAnnouncements: (opts) => request('/announcements', {}, false, opts),
+  getTimer: (opts) => request('/timer', {}, false, opts),
+  getMyTeam: (opts) => request('/teams/mine', {}, false, opts),
   createTeam: (teamName) =>
     request('/teams/create', { method: 'POST', body: JSON.stringify({ teamName }) }),
   joinTeam: (inviteCode) =>

@@ -3,7 +3,7 @@ const submissionService = require('../services/submissionService');
 const teamService = require('../services/teamService');
 const eventService = require('../services/eventService');
 const hintService = require('../services/hintService');
-const { HINT_PENALTY } = require('shared');
+const { HINT_PENALTY } = require('../shared/constants');
 
 async function submitFlag(req, res, next) {
   try {
