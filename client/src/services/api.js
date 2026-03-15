@@ -1,15 +1,23 @@
 import { auth } from '../config/firebase';
+import { signOut } from 'firebase/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-async function getToken() {
+async function getToken(forceRefresh = false) {
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
-  return user.getIdToken();
+  return user.getIdToken(forceRefresh);
 }
 
-async function request(endpoint, options = {}) {
-  const token = await getToken();
+async function handleSessionExpired() {
+  await signOut(auth);
+  const url = new URL('/login', window.location.origin);
+  url.searchParams.set('reason', 'session_expired');
+  window.location.href = url.toString();
+}
+
+async function request(endpoint, options = {}, retried = false) {
+  const token = await getToken(retried);
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers: {
@@ -18,7 +26,23 @@ async function request(endpoint, options = {}) {
       ...options.headers,
     },
   });
-  const data = await res.json();
+
+  if (res.status === 401 && !retried) {
+    try {
+      const newToken = await getToken(true);
+      return request(endpoint, options, true);
+    } catch {
+      await handleSessionExpired();
+      throw new Error('Session expired');
+    }
+  }
+  if (res.status === 401) {
+    await handleSessionExpired();
+    throw new Error('Session expired');
+  }
+
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
@@ -34,6 +58,10 @@ async function uploadFiles(files) {
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
+  if (res.status === 401) {
+    await handleSessionExpired();
+    throw new Error('Session expired');
+  }
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Upload failed');
   return data;
