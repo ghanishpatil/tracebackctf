@@ -1,7 +1,11 @@
 import { auth } from '../config/firebase';
 import { signOut } from 'firebase/auth';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Production: use Render API. Local: use proxy /api. Override with VITE_API_URL.
+const API_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD && typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+    ? 'https://tracebackctf.onrender.com/api'
+    : '/api');
 
 async function getToken(forceRefresh = false) {
   const user = auth.currentUser;
@@ -40,7 +44,8 @@ async function request(endpoint, options = {}, retried = false) {
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    throw new Error('Unexpected server response');
+    if (res.status === 404) throw new Error('API not found. Check that the backend is running.');
+    throw new Error('Could not reach the server. Try again in a moment.');
   }
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
